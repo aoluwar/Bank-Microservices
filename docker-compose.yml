@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  # Database
+  postgres:
+    image: postgres:13
+    container_name: bank-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bankdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching
+  redis:
+    image: redis:6
+    container_name: bank-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Authentication Service
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: bank-auth-service
+    environment:
+      - PORT=8082
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=bankdb
+      - JWT_SECRET=your-secret-key-change-in-production
+    ports:
+      - "8082:8082"
+    depends_on:
+      - postgres
+    networks:
+      - bank-network
+    restart: on-failure
+
+  # Account Service
+  account-service:
+    build:
+      context: ./account-service
+      dockerfile: Dockerfile
+    container_name: bank-account-service
+    environment:
+      - PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=bankdb
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - auth-service
+    networks:
+      - bank-network
+    restart: on-failure
+
+  # Transaction Service
+  transaction-service:
+    build:
+      context: ./transaction-service
+      dockerfile: Dockerfile
+    container_name: bank-transaction-service
+    environment:
+      - PORT=8081
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=bankdb
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres
+      - account-service
+    networks:
+      - bank-network
+    restart: on-failure
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: bank-api-gateway
+    environment:
+      - PORT=8000
+      - AUTH_SERVICE_URL=http://auth-service:8082
+      - ACCOUNT_SERVICE_URL=http://account-service:8080
+      - TRANSACTION_SERVICE_URL=http://transaction-service:8081
+      - JWT_SECRET=your-secret-key-change-in-production
+    ports:
+      - "8000:8000"
+    depends_on:
+      - auth-service
+      - account-service
+      - transaction-service
+    networks:
+      - bank-network
+    restart: on-failure
+
+networks:
+  bank-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
