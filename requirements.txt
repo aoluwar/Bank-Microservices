@@ -1,0 +1,29 @@
+# Go Microservices Dependencies
+
+# Web Framework
+github.com/gorilla/mux v1.8.0
+
+# Database
+github.com/lib/pq v1.10.7
+
+# Authentication
+github.com/dgrijalva/jwt-go v3.2.0
+golang.org/x/crypto/bcrypt latest
+
+# Environment Variables
+github.com/joho/godotenv v1.4.0
+
+# HTTP Client
+github.com/go-resty/resty/v2 v2.7.0
+
+# Logging
+github.com/sirupsen/logrus v1.9.0
+
+# Validation
+github.com/go-playground/validator/v10 v10.11.1
+
+# Metrics
+github.com/prometheus/client_golang v1.14.0
+
+# Testing
+github.com/stretchr/testify v1.8.1
